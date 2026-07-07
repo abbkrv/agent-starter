@@ -32,6 +32,11 @@ ask_secret GROQ_KEY  "Groq API key для голосовых (Enter = пропу
 # Санитизация: имена идут в JSON-строки и в имя пользователя — убираем то, что ломает JSON/shell.
 OPERATOR_NAME="$(printf '%s' "$OPERATOR_NAME" | tr -d '"\\')"
 AGENT_NAME="$(printf '%s' "$AGENT_NAME" | tr -d '"\\')"
+# sed-безопасные версии: экранируем & и # (разделитель), иначе имя с этими
+# символами роняет sed или молча портит подстановку плейсхолдеров.
+sedq(){ printf '%s' "$1" | sed -e 's/[&#]/\\&/g'; }
+OPERATOR_SED="$(sedq "$OPERATOR_NAME")"
+AGENT_SED="$(sedq "$AGENT_NAME")"
 LAB_NAME="$(printf '%s' "$OPERATOR_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')"; [ -n "$LAB_NAME" ] || LAB_NAME="agent"
 [ -n "${BOT_TOKEN:-}" ] || { echo "BOT_TOKEN обязателен"; exit 1; }
 [[ "${OWNER_TG_ID:-}" =~ ^[0-9]+$ ]] || { echo "OWNER_TG_ID должен быть числом (Telegram ID), получено: '${OWNER_TG_ID:-}'"; exit 1; }
@@ -84,7 +89,7 @@ cp -r "$HERE"/workspace/skills/. "$WS_DIR/skills/"
 cp "$HERE"/workspace/core/*.md "$WS_DIR/core/" 2>/dev/null || true
 cp "$HERE"/workspace/core/warm/*.md "$WS_DIR/core/warm/" 2>/dev/null || true
 cp "$HERE"/workspace/core/hot/*.md "$WS_DIR/core/hot/" 2>/dev/null || true
-subst(){ sed -e "s#{{OPERATOR}}#${OPERATOR_NAME}#g" -e "s#{{AGENT}}#${AGENT_NAME}#g" -e "s#{{OWNER_ID}}#${OWNER_TG_ID}#g" "$1"; }
+subst(){ sed -e "s#{{OPERATOR}}#${OPERATOR_SED}#g" -e "s#{{AGENT}}#${AGENT_SED}#g" -e "s#{{OWNER_ID}}#${OWNER_TG_ID}#g" "$1"; }
 subst "$HERE/workspace/CLAUDE.md.template"     > "$WS_DIR/CLAUDE.md"
 subst "$HERE/workspace/core/USER.md.template"  > "$WS_DIR/core/USER.md"
 subst "$HERE/workspace/core/rules.md.template" > "$WS_DIR/core/rules.md"
@@ -93,12 +98,13 @@ ok "workspace развёрнут под $OPERATOR_NAME"
 say "7/9 Секреты + config"
 printf '%s' "$BOT_TOKEN" > "$SEC_DIR/telegram-bot-token"; chmod 600 "$SEC_DIR/telegram-bot-token"
 if [ -n "${GROQ_KEY:-}" ]; then printf '%s' "$GROQ_KEY" > "$SEC_DIR/groq-api-key"; chmod 600 "$SEC_DIR/groq-api-key"; ok "bot token + groq key"; else printf '   ! groq key пропущен (добавь позже в %s/groq-api-key)\n' "$SEC_DIR"; fi
-sed -e "s#__OWNER_ID__#${OWNER_TG_ID}#g" -e "s#__LAB_DIR__#${LAB_DIR}#g" -e "s#__AGENT__#${AGENT_NAME}#g" -e "s#__OPERATOR__#${OPERATOR_NAME}#g" "$HERE/config.example.json" > "$GW_DIR/config.json"
+sed -e "s#__OWNER_ID__#${OWNER_TG_ID}#g" -e "s#__LAB_DIR__#${LAB_DIR}#g" -e "s#__AGENT__#${AGENT_SED}#g" -e "s#__OPERATOR__#${OPERATOR_SED}#g" "$HERE/config.example.json" > "$GW_DIR/config.json"
+chmod 600 "$GW_DIR/config.json"
 ok "config.json собран"
 
 say "8/9 Хуки безопасности"
 for h in block-dangerous protect-files log-commands; do
-  sed -e "s#__WS__#${WS_DIR}#g" -e "s#__OPERATOR__#${OPERATOR_NAME}#g" "$HERE/hooks/$h.sh" > "$WS_DIR/hooks/$h.sh"
+  sed -e "s#__WS__#${WS_DIR}#g" -e "s#__OPERATOR__#${OPERATOR_SED}#g" "$HERE/hooks/$h.sh" > "$WS_DIR/hooks/$h.sh"
   chmod +x "$WS_DIR/hooks/$h.sh"
 done
 sed -e "s#__WS__#${WS_DIR}#g" "$HERE/workspace/settings.json.template" > "$WS_DIR/settings.json"
