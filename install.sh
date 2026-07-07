@@ -5,11 +5,13 @@
 #
 # Запуск на СЕРВЕРЕ ПОД ROOT (нужен для создания пользователя и системных пакетов):
 #   sudo bash install.sh
-# Значения можно передать заранее через окружение (иначе спросит):
-#   OPERATOR_NAME='Abdulmalik' OWNER_TG_ID='123' BOT_TOKEN='...' GROQ_KEY='...' sudo -E bash install.sh
+# Скрипт спросит имя, Telegram ID, токен бота и Groq-ключ интерактивно.
+# НЕ передавай токен в командной строке (BOT_TOKEN='...' bash ...) — он попадёт
+# в ~/.bash_history. Вводи по запросу; секретный ввод скрыт (эхо выключено).
 #
 # Секреты НЕ хранятся в репозитории и НЕ хардкодятся: пишутся в secrets/ (chmod 600).
 set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a  # apt не виснет на needrestart (Ubuntu 22/24)
 
 GW_REPO="https://github.com/qwwiwi/jarvis-telegram-gateway.git"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -17,18 +19,22 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 say(){ printf '\n\033[1;33m== %s\033[0m\n' "$1"; }
 ok(){ printf '   \033[1;32m✓ %s\033[0m\n' "$1"; }
 ask(){ local __v="$1" __p="$2" __in=""; if [ -n "${!__v:-}" ]; then return; fi; read -rp "   $__p: " __in; printf -v "$__v" '%s' "$__in"; }
+ask_secret(){ local __v="$1" __p="$2" __in=""; if [ -n "${!__v:-}" ]; then return; fi; read -rsp "   $__p: " __in; echo; printf -v "$__v" '%s' "$__in"; }
 
 [ "$(id -u)" = 0 ] || { echo "Запусти под root:  sudo bash install.sh"; exit 1; }
 
 say "Данные агента"
 ask OPERATOR_NAME "Имя оператора (для кого агент, напр. Abdulmalik)"
 ask AGENT_NAME    "Имя агента (Enter = Jarvis)"; AGENT_NAME="${AGENT_NAME:-Jarvis}"
-ask OWNER_TG_ID   "Telegram ID оператора (узнать: @userinfobot)"
-ask BOT_TOKEN     "Токен бота от @BotFather"
-ask GROQ_KEY      "Groq API key для голосовых (Enter = пропустить)"
+ask OWNER_TG_ID   "Telegram ID оператора (только цифры, узнать: @userinfobot)"
+ask_secret BOT_TOKEN "Токен бота от @BotFather (ввод скрыт)"
+ask_secret GROQ_KEY  "Groq API key для голосовых (Enter = пропустить, ввод скрыт)"
+# Санитизация: имена идут в JSON-строки и в имя пользователя — убираем то, что ломает JSON/shell.
+OPERATOR_NAME="$(printf '%s' "$OPERATOR_NAME" | tr -d '"\\')"
+AGENT_NAME="$(printf '%s' "$AGENT_NAME" | tr -d '"\\')"
 LAB_NAME="$(printf '%s' "$OPERATOR_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')"; [ -n "$LAB_NAME" ] || LAB_NAME="agent"
 [ -n "${BOT_TOKEN:-}" ] || { echo "BOT_TOKEN обязателен"; exit 1; }
-[ -n "${OWNER_TG_ID:-}" ] || { echo "OWNER_TG_ID обязателен"; exit 1; }
+[[ "${OWNER_TG_ID:-}" =~ ^[0-9]+$ ]] || { echo "OWNER_TG_ID должен быть числом (Telegram ID), получено: '${OWNER_TG_ID:-}'"; exit 1; }
 
 AGENT_USER="$LAB_NAME"
 UHOME="/home/$AGENT_USER"
@@ -37,7 +43,7 @@ LAB_DIR="$UHOME/.claude-lab/$LAB_NAME"
 WS_DIR="$LAB_DIR/.claude"
 SEC_DIR="$LAB_DIR/secrets"
 SVC="${LAB_NAME}-gateway"
-asuser(){ sudo -u "$AGENT_USER" "$@"; }
+asuser(){ sudo -H -u "$AGENT_USER" "$@"; }  # -H: HOME=/home/<юзер> (pip/git/npm пишут в свой кэш, не в /root)
 
 say "1/9 Системные зависимости"
 apt-get update -qq
@@ -50,7 +56,8 @@ if ! command -v node >/dev/null 2>&1; then
   apt-get install -y -qq nodejs >/dev/null
 fi
 ok "node $(node -v)"
-command -v claude >/dev/null 2>&1 || npm i -g @anthropic-ai/claude-code >/dev/null 2>&1
+command -v claude >/dev/null 2>&1 || npm i -g @anthropic-ai/claude-code >/dev/null 2>&1 || true
+command -v claude >/dev/null 2>&1 || { echo "ОШИБКА: не удалось установить claude CLI (проверь сеть/npm)"; exit 1; }
 ok "claude CLI: $(command -v claude)"
 
 say "3/9 Пользователь $AGENT_USER"
