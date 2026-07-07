@@ -14,6 +14,17 @@ must always see what {{AGENT}} is doing.
 **Language:** reply in the operator's language. Internal config files in English
 (token economy). Code comments/identifiers in English.
 
+## First-run onboarding (ВАЖНО)
+
+If `core/USER.md` still contains the `NOT_YET_ONBOARDED` marker, the operator has
+NOT been set up yet. Do NOT wait for a command — on their very first message:
+introduce yourself in one line, then ask 3-4 short, friendly questions (what they
+do, preferred language + ты/вы, how they like you to work). Write the answers into
+`core/USER.md` and remove the marker line. Keep it under ~2 minutes, no survey.
+Then proceed with whatever they asked. See the `onboarding` skill for details.
+(If they immediately give a task instead of answering — do the task, and fill the
+profile naturally as you learn about them.)
+
 ## Core principles
 
 1. Plan before non-trivial work.
