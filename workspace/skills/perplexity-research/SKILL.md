@@ -1,45 +1,60 @@
 ---
 name: perplexity-research
-description: "Web research via Perplexity Sonar (LLM с доступом к интернету). Use when operator says: \"ресерч\", \"поищи в интернете\", \"что говорят про X\", \"актуально ли\", \"факт-чек\", \"найди источники\", \"тренды\", \"best practices\", \"research X\", \"fact-check\". Идеален для cross-source questions, тренды, сравнения, мнения сообщества. Do NOT use for: чтение конкретного известного URL (используй markdown-new) или YouTube-видео (youtube-transcript)."
+description: "Web research via Perplexity Sonar (LLM с доступом к интернету). Use when the operator says: «ресёрч», «поищи в интернете», «что говорят про X», «актуально ли», «факт-чек», «найди источники», «тренды», «best practices», «research X», «fact-check». Идеально для cross-source вопросов, трендов, сравнений, свежих новостей. Do NOT use for: чтение одного известного URL (markdown-new) или YouTube-видео (youtube-transcript)."
 ---
 
-# Perplexity Research -- Web Search
+# Perplexity Research — веб-поиск
 
-Search the web, fact-check claims, analyze trends, and find best practices using the Perplexity Sonar API.
+Ищи в интернете, проверяй факты, разбирай тренды и находи свежие источники через
+Perplexity Sonar API. Perplexity сам обходит много источников и возвращает связный
+ответ со ссылками.
 
-## Usage
+## Ключ API
 
-When the user asks to research a topic, fact-check, or find current information:
+Ключ (`pplx-...`) лежит в файле:
 
-1. Get API key from `~/.claude-lab/shared/secrets/perplexity.env`
-2. Query Perplexity Sonar API
-3. Return structured results with sources
+```
+__SECRETS__/perplexity-api-key
+```
 
-## API Key
+Если файла нет — значит ключ ещё не подключён. Скажи об этом оператору и дай
+ссылку: получить ключ на https://www.perplexity.ai/settings/api, затем положить в
+этот файл (`chmod 600`). Подробно — в `docs/SETUP-KEYS.md`. Без ключа отвечай из
+своих знаний, но честно предупреди, что это без свежего веб-поиска.
 
-- Paid: perplexity.ai (API access required)
-- Store key in: `~/.claude-lab/shared/secrets/perplexity.env`
+## Как использовать
 
-## Example
+Когда оператор просит поискать, проверить факт или узнать свежее:
 
 ```bash
-PPLX_KEY=$(cat ~/.claude-lab/shared/secrets/perplexity.env)
-curl -X POST "https://api.perplexity.ai/chat/completions" \
+PPLX_KEY=$(cat __SECRETS__/perplexity-api-key)
+curl -sS --max-time 40 -X POST "https://api.perplexity.ai/chat/completions" \
   -H "Authorization: Bearer $PPLX_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "sonar",
     "messages": [
-      {"role": "user", "content": "What are the best practices for Claude Code agent architecture in 2026?"}
+      {"role": "user", "content": "ВОПРОС ОПЕРАТОРА"}
     ]
   }'
 ```
 
-## When to Use
+Ответ — в `.choices[0].message.content`. Верни его оператору своими словами,
+сохрани ссылки-источники, которые Perplexity проставляет в тексте ([1], [2], …).
 
-- Current events, news, trends
-- Best practices and recommendations
-- Fact-checking claims
-- Competitor analysis
-- Technology comparisons
-- Market research
+## Модели
+
+- `sonar` — базовая, дёшево (меньше рубля за запрос). Бери по умолчанию.
+- `sonar-pro` — глубже, больше источников. Только когда нужен серьёзный разбор.
+
+## Когда использовать
+
+- Свежие новости, события, тренды.
+- Best practices и рекомендации.
+- Факт-чек утверждений.
+- Сравнение технологий/сервисов, анализ рынка.
+
+## Когда НЕ использовать
+
+- Чтение одного известного URL → навык `markdown-new`.
+- YouTube-видео → навык `youtube-transcript`.

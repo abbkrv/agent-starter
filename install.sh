@@ -78,6 +78,9 @@ say "6/9 Workspace + подстановка данных"
 asuser mkdir -p "$WS_DIR/core/warm" "$WS_DIR/core/hot" "$WS_DIR/skills" "$WS_DIR/hooks" "$SEC_DIR"
 chmod 700 "$SEC_DIR"
 cp -r "$HERE"/workspace/skills/. "$WS_DIR/skills/"
+# Навык perplexity-research читает ключ из папки секретов агента — подставляем реальный путь.
+[ -f "$WS_DIR/skills/perplexity-research/SKILL.md" ] && \
+  sed -i "s#__SECRETS__#${SEC_DIR}#g" "$WS_DIR/skills/perplexity-research/SKILL.md"
 cp "$HERE"/workspace/core/*.md "$WS_DIR/core/" 2>/dev/null || true
 cp "$HERE"/workspace/core/warm/*.md "$WS_DIR/core/warm/" 2>/dev/null || true
 cp "$HERE"/workspace/core/hot/*.md "$WS_DIR/core/hot/" 2>/dev/null || true
