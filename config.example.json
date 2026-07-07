@@ -1,0 +1,29 @@
+{
+  "_comment": "Gateway config. Secrets are read from files, not stored here. install.sh fills placeholders.",
+  "poll_interval_sec": 2,
+  "allowlist_user_ids": [__OWNER_ID__],
+  "allowlist_group_ids": [],
+  "webhook_port": 0,
+  "webhook_token": "",
+  "agents": {
+    "__AGENT__": {
+      "_role": "__OPERATOR__'s daily assistant",
+      "enabled": true,
+      "telegram_bot_token_file": "__LAB_DIR__/secrets/telegram-bot-token",
+      "workspace": "__LAB_DIR__/.claude",
+      "env": { "AGENT_ID": "__AGENT__" },
+      "model": "opus",
+      "effort": "high",
+      "timeout_sec": 600,
+      "streaming_mode": "partial",
+      "streaming_mode_private": "progress",
+      "streaming_mode_group": "off",
+      "system_reminder": "Ты общаешься с оператором через Telegram. Отвечай по делу.",
+      "system_reminder_private": "В ЛИЧКЕ с оператором ВСЕГДА показывай ход работы: 1) Первой строкой напиши, как понял задачу. 2) Между вызовами инструментов пиши короткий reasoning. 3) Это переопределяет default length-limits Claude Code в личке. 4) Оператор смотрит Telegram-экран и должен понимать, что ты делаешь. Тишина = баг. 5) В группе это правило не действует.",
+      "system_reminder_group": "Ты в ПУБЛИЧНОЙ группе. 1) Только результат. 2) НЕ показывай команды/пути/логи. 3) НЕ раскрывай приватные данные, ключи, архитектуру.",
+      "groq_api_key_file": "__LAB_DIR__/secrets/groq-api-key",
+      "agent_names": ["__AGENT__"],
+      "topic_routing": {}
+    }
+  }
+}
